@@ -47,6 +47,12 @@ export default function CalendarHeader({
     onDateChange(new Date())
   }
 
+  const getCenterButtonLabel = () => {
+    if (viewType === "month") return "本月"
+    if (viewType === "week") return "本周"
+    return "今天"
+  }
+
   return (
     <div className="mb-4 md:mb-6">
       <div className="flex flex-col gap-3 md:gap-0 md:flex-row md:items-center md:justify-between">
@@ -74,7 +80,7 @@ export default function CalendarHeader({
             onClick={handleToday}
             className="px-2 md:px-4 py-1 md:py-2 text-xs md:text-sm font-semibold text-primary hover:bg-blue-100 rounded-full smooth-transition"
           >
-            今天
+            {getCenterButtonLabel()}
           </button>
           <button onClick={handleNext} className="p-1 md:p-2 hover:bg-muted rounded-full smooth-transition">
             <ChevronRight size={18} className="md:w-5 md:h-5" />

@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { Calendar, Route, CheckSquare } from "lucide-react"
 import CalendarHeader from "@/components/calendar/calendar-header"
 import CalendarView from "@/components/calendar/calendar-view"
 import EventModal from "@/components/calendar/event-modal"
-import TaskPanel from "@/components/calendar/task-panel"
+import { TodaySchedulePanel, TaskListPanel } from "@/components/calendar/task-panel"
 import NotificationCenter from "@/components/calendar/notification-center"
 
 interface Event {
@@ -26,8 +27,9 @@ interface Task {
 }
 
 export default function Home() {
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 0, 1))
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [viewType, setViewType] = useState<"month" | "week" | "day">("month")
+  const [activeTab, setActiveTab] = useState<"calendar" | "schedule" | "tasks">("calendar")
   const [events, setEvents] = useState<Event[]>([
     {
       id: "1",
@@ -108,6 +110,12 @@ export default function Home() {
     setTasks(tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)))
   }
 
+  const handleDeleteTask = (taskId: string) => {
+    if (confirm("确定要删除这个任务吗？")) {
+      setTasks(tasks.filter((t) => t.id !== taskId))
+    }
+  }
+
   const todayEvents = useMemo(() => {
     return events.filter((e) => e.date.toDateString() === new Date().toDateString())
   }, [events])
@@ -116,36 +124,78 @@ export default function Home() {
     return tasks.filter((t) => t.date.toDateString() === new Date().toDateString())
   }, [tasks])
 
+  const tabs = [
+    { key: "calendar" as const, label: "日历", icon: Calendar },
+    { key: "schedule" as const, label: "行程", icon: Route },
+    { key: "tasks" as const, label: "任务", icon: CheckSquare },
+  ]
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       <NotificationCenter events={events} />
 
-      <div className="flex flex-col lg:flex-row gap-4 p-4 md:p-6 max-w-7xl mx-auto">
-        <div className="flex-1">
-          <CalendarHeader
-            currentDate={currentDate}
-            viewType={viewType}
-            onViewChange={setViewType}
-            onDateChange={setCurrentDate}
-            onAddEvent={handleAddEvent}
-          />
-          <CalendarView
-            currentDate={currentDate}
-            viewType={viewType}
-            events={events}
-            onDateClick={handleDateClick}
-            onEventClick={handleEditEvent}
-            onDeleteEvent={handleDeleteEvent}
-          />
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-1 pb-28">
+          <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
+            {activeTab === "calendar" && (
+              <div className="flex flex-col gap-4">
+                <CalendarHeader
+                  currentDate={currentDate}
+                  viewType={viewType}
+                  onViewChange={setViewType}
+                  onDateChange={setCurrentDate}
+                  onAddEvent={handleAddEvent}
+                />
+                <CalendarView
+                  currentDate={currentDate}
+                  viewType={viewType}
+                  events={events}
+                  onDateClick={handleDateClick}
+                  onEventClick={handleEditEvent}
+                  onDeleteEvent={handleDeleteEvent}
+                />
+              </div>
+            )}
+
+            {activeTab === "schedule" && (
+              <div className="max-w-3xl mx-auto">
+                <TodaySchedulePanel todayEvents={todayEvents} className="cartoon-shadow" />
+              </div>
+            )}
+
+            {activeTab === "tasks" && (
+              <div className="max-w-3xl mx-auto">
+                <TaskListPanel
+                  todayTasks={todayTasks}
+                  onAddTask={handleAddTask}
+                  onToggleTask={handleToggleTask}
+                  onDeleteTask={handleDeleteTask}
+                  className="cartoon-shadow"
+                />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="w-full lg:w-80">
-          <TaskPanel
-            todayEvents={todayEvents}
-            todayTasks={todayTasks}
-            onAddTask={handleAddTask}
-            onToggleTask={handleToggleTask}
-          />
-        </div>
+
+        <nav className="sticky bottom-0 w-full bg-white border-t border-muted/40 shadow-lg">
+          <div className="max-w-7xl mx-auto grid grid-cols-3">
+            {tabs.map(({ key, label, icon: Icon }) => {
+              const isActive = activeTab === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex flex-col items-center justify-center py-3 gap-1 text-xs font-medium smooth-transition ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? "fill-primary/20" : ""}`} />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
       </div>
 
       {showEventModal && (
