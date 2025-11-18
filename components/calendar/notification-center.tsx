@@ -15,9 +15,17 @@ interface NotificationCenterProps {
   events: any[]
 }
 
+interface ToastNotification extends Notification {
+  expiresAt: number
+}
+
+const TOAST_AUTO_CLOSE_MS = 20000
+
 export default function NotificationCenter({ events }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
+  const [toastNotifications, setToastNotifications] = useState<ToastNotification[]>([])
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
     const checkUpcomingEvents = () => {
@@ -31,14 +39,14 @@ export default function NotificationCenter({ events }: NotificationCenterProps) 
 
         // Check different reminder times
         const reminders = [
-          { time: 5, label: "5分钟前" },
-          { time: 15, label: "15分钟前" },
-          { time: 30, label: "30分钟前" },
-          { time: 60, label: "1小时前" },
-          { time: 1440, label: "1天前" },
+          { time: 5, label: "5分钟前", messageLabel: "5分钟后" },
+          { time: 15, label: "15分钟前", messageLabel: "15分钟后" },
+          { time: 30, label: "30分钟前", messageLabel: "30分钟后" },
+          { time: 60, label: "1小时前", messageLabel: "1小时后" },
+          { time: 1440, label: "1天前", messageLabel: "1天后" },
         ]
 
-        reminders.forEach(({ time, label }) => {
+        reminders.forEach(({ time, label, messageLabel }) => {
           if (event.reminder === label) {
             const reminderTime = new Date(eventDate.getTime() - time * 60000)
             const timeDiff = eventDate.getTime() - now.getTime()
@@ -53,7 +61,7 @@ export default function NotificationCenter({ events }: NotificationCenterProps) 
                 upcomingNotifications.push({
                   id: notificationId,
                   title: event.title,
-                  message: `提醒：${event.title} 将在 ${label} 开始`,
+                  message: `提醒：${event.title} 将在 ${messageLabel}开始`,
                   type: "reminder",
                   timestamp: new Date(),
                 })
@@ -64,7 +72,25 @@ export default function NotificationCenter({ events }: NotificationCenterProps) 
       })
 
       if (upcomingNotifications.length > 0) {
-        setNotifications((prev) => [...prev, ...upcomingNotifications.filter((n) => !prev.some((p) => p.id === n.id))])
+        setNotifications((prev) => {
+          const deduped = upcomingNotifications.filter((n) => !prev.some((p) => p.id === n.id))
+          if (deduped.length === 0) {
+            return prev
+          }
+          setToastNotifications((toastPrev) => {
+            const toastAdds = deduped
+              .filter((n) => !toastPrev.some((t) => t.id === n.id))
+              .map((n) => ({
+                ...n,
+                expiresAt: Date.now() + TOAST_AUTO_CLOSE_MS,
+              }))
+            if (toastAdds.length === 0) {
+              return toastPrev
+            }
+            return [...toastPrev, ...toastAdds]
+          })
+          return [...prev, ...deduped]
+        })
       }
     }
 
@@ -73,12 +99,33 @@ export default function NotificationCenter({ events }: NotificationCenterProps) 
   }, [events, notifications])
 
   const handleRemoveNotification = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id))
+    const target = notifications.find((n) => n.id === id)
+    const title = target?.title ? `「${target.title}」` : ""
+    if (confirm(`确定要删除这条通知${title}吗？`)) {
+      setNotifications(notifications.filter((n) => n.id !== id))
+      setToastNotifications((prev) => prev.filter((toast) => toast.id !== id))
+    }
   }
 
   const handleClearAll = () => {
-    setNotifications([])
+    if (notifications.length === 0) return
+    if (confirm("确定要清除所有通知吗？")) {
+      setNotifications([])
+      setToastNotifications([])
+    }
   }
+
+  const handleDismissToast = (id: string) => {
+    setToastNotifications((prev) => prev.filter((toast) => toast.id !== id))
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+      setToastNotifications((prev) => prev.filter((toast) => toast.expiresAt > Date.now()))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="fixed top-4 right-4 z-40">
@@ -134,17 +181,31 @@ export default function NotificationCenter({ events }: NotificationCenterProps) 
       )}
 
       {/* Toast Notifications */}
-      <div className="fixed top-20 right-4 space-y-2 pointer-events-none z-50">
-        {notifications.slice(0, 3).map((notification) => (
-          <div
-            key={notification.id}
-            className="animate-slide-in-right bg-white rounded-lg p-4 cartoon-shadow max-w-xs pointer-events-auto"
-          >
-            <div className="font-semibold text-foreground">{notification.title}</div>
-            <div className="text-sm text-muted-foreground">{notification.message}</div>
-          </div>
-        ))}
+      <div className="fixed top-20 right-4 space-y-2 z-50">
+        {toastNotifications.slice(0, 3).map((notification) => {
+          const remainingSeconds = Math.max(0, Math.ceil((notification.expiresAt - currentTime) / 1000))
+          return (
+            <div
+              key={notification.id}
+              className="animate-slide-in-right bg-white rounded-lg p-4 cartoon-shadow max-w-xs relative"
+            >
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span>剩余 {remainingSeconds}s</span>
+                <button
+                  onClick={() => handleDismissToast(notification.id)}
+                  className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-destructive smooth-transition"
+                  aria-label="手动关闭通知"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+              <div className="font-semibold text-foreground">{notification.title}</div>
+              <div className="text-sm text-muted-foreground">{notification.message}</div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
+
