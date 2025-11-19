@@ -1,5 +1,83 @@
 "use client"
 
+const WEEK_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+const LUNAR_DAY_LABELS = [
+  "初一",
+  "初二",
+  "初三",
+  "初四",
+  "初五",
+  "初六",
+  "初七",
+  "初八",
+  "初九",
+  "初十",
+  "十一",
+  "十二",
+  "十三",
+  "十四",
+  "十五",
+  "十六",
+  "十七",
+  "十八",
+  "十九",
+  "二十",
+  "廿一",
+  "廿二",
+  "廿三",
+  "廿四",
+  "廿五",
+  "廿六",
+  "廿七",
+  "廿八",
+  "廿九",
+  "三十",
+]
+const LUNAR_MONTH_FALLBACK = ["正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
+const lunarNumericFormatter =
+  typeof Intl !== "undefined"
+    ? new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { month: "numeric", day: "numeric" })
+    : null
+const lunarMonthFormatter =
+  typeof Intl !== "undefined"
+    ? new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
+        month: "long",
+      })
+    : null
+
+function getLunarLabel(date: Date) {
+  if (!lunarNumericFormatter) return ""
+  try {
+    const parts = lunarNumericFormatter.formatToParts(date)
+    const monthValue = Number(parts.find((p) => p.type === "month")?.value)
+    const dayValue = Number(parts.find((p) => p.type === "day")?.value)
+
+    if (!Number.isFinite(dayValue)) {
+      return ""
+    }
+
+    if (dayValue === 1) {
+      if (lunarMonthFormatter) {
+        const monthText = lunarMonthFormatter.format(date)
+        if (monthText) {
+          return monthText
+            .replace("十一月", "冬月")
+            .replace("十二月", "腊月")
+            .replace(/^一月$/, "正月")
+        }
+      }
+      if (Number.isFinite(monthValue)) {
+        return LUNAR_MONTH_FALLBACK[(monthValue - 1) % LUNAR_MONTH_FALLBACK.length] ?? ""
+      }
+      return "初一"
+    }
+
+    return LUNAR_DAY_LABELS[dayValue - 1] ?? ""
+  } catch {
+    return ""
+  }
+}
+
 interface Event {
   id: string
   title: string
@@ -48,7 +126,6 @@ export default function CalendarView({
 }
 
 function MonthView({ currentDate, events, onDateClick, onEventClick, onDeleteEvent }: MonthViewProps) {
-  const weekDays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const calendarStartDate = new Date(firstDayOfMonth)
   calendarStartDate.setDate(firstDayOfMonth.getDate() - firstDayOfMonth.getDay())
@@ -66,7 +143,7 @@ function MonthView({ currentDate, events, onDateClick, onEventClick, onDeleteEve
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-7 gap-1 text-xs font-semibold uppercase text-muted-foreground">
-        {weekDays.map((day) => (
+        {WEEK_DAYS.map((day) => (
           <div key={day} className="text-center tracking-wide">
             {day}
           </div>
@@ -94,6 +171,7 @@ function MonthView({ currentDate, events, onDateClick, onEventClick, onDeleteEve
               >
                 {date.getDate()}
               </div>
+              <div className="text-[10px] text-muted-foreground">{getLunarLabel(date)}</div>
               <div className="flex flex-col gap-1 overflow-visible justify-center">
                 {dayEvents.slice(0, 2).map((event) => (
                   <div
@@ -138,45 +216,55 @@ function WeekView({ currentDate, events, onDateClick, onEventClick }: WeekViewPr
   })
 
   return (
-    <div className="grid grid-cols-7 gap-1">
-      {weekDates.map((date, dayIdx) => {
-        const dayEvents = events.filter(event => event.date.toDateString() === date.toDateString())
-        const isToday = date.toDateString() === new Date().toDateString()
-
-        return (
-          <div
-            key={dayIdx}
-            onClick={() => onDateClick(date)}
-            className={`min-h-24 md:min-h-28 p-2 rounded-md cursor-pointer smooth-transition hover:shadow-lg border ${
-              isToday
-                ? "ring-2 ring-primary border-primary/40 bg-white"
-                : "border-muted/40 bg-white/90 backdrop-blur-sm"
-            }`}
-          >
-            <div className="text-xs font-semibold mb-1 text-foreground">
-              {date.getDate()}
-            </div>
-            <div className="flex flex-col gap-1 overflow-visible justify-center">
-              {dayEvents.slice(0, 2).map((event) => (
-                <div
-                  key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEventClick(event)
-                  }}
-                  className="text-xs bg-secondary text-white p-1 rounded cursor-pointer hover:bg-secondary/80 smooth-transition line-clamp-2 group relative overflow-visible min-h-6 flex items-center justify-center"
-                  title={event.title}
-                >
-                  {event.title}
-                </div>
-              ))}
-              {dayEvents.length > 2 && (
-                <div className="text-xs text-primary font-semibold">+{dayEvents.length - 2}个事件</div>
-              )}
-            </div>
+    <div className="space-y-2">
+      <div className="grid grid-cols-7 gap-1 text-xs font-semibold uppercase text-muted-foreground">
+        {WEEK_DAYS.map((day) => (
+          <div key={day} className="text-center tracking-wide">
+            {day}
           </div>
-        )
-      })}
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {weekDates.map((date, dayIdx) => {
+          const dayEvents = events.filter(event => event.date.toDateString() === date.toDateString())
+          const isToday = date.toDateString() === new Date().toDateString()
+
+          return (
+            <div
+              key={dayIdx}
+              onClick={() => onDateClick(date)}
+              className={`min-h-24 md:min-h-28 p-2 rounded-md cursor-pointer smooth-transition hover:shadow-lg border ${
+                isToday
+                  ? "ring-2 ring-primary border-primary/40 bg-white"
+                  : "border-muted/40 bg-white/90 backdrop-blur-sm"
+              }`}
+            >
+              <div className="text-xs font-semibold mb-1 text-foreground">
+                {date.getDate()}
+              </div>
+              <div className="text-[10px] text-muted-foreground">{getLunarLabel(date)}</div>
+              <div className="flex flex-col gap-1 overflow-visible justify-center">
+                {dayEvents.slice(0, 2).map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEventClick(event)
+                    }}
+                    className="text-xs bg-secondary text-white p-1 rounded cursor-pointer hover:bg-secondary/80 smooth-transition line-clamp-2 group relative overflow-visible min-h-6 flex items-center justify-center"
+                    title={event.title}
+                  >
+                    {event.title}
+                  </div>
+                ))}
+                {dayEvents.length > 2 && (
+                  <div className="text-xs text-primary font-semibold">+{dayEvents.length - 2}个事件</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -195,6 +283,7 @@ function DayView({ currentDate, events, onEventClick }: DayViewProps) {
       <div className="text-lg font-bold mb-2 text-foreground">
         {formattedDate}
       </div>
+      <div className="text-sm text-muted-foreground mb-4">{getLunarLabel(currentDate)}</div>
       {dayEvents.length === 0 ? (
         <div className="mt-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
           <div className="text-3xl">🗓️</div>

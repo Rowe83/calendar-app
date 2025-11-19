@@ -1,13 +1,12 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface CalendarHeaderProps {
   currentDate: Date
   viewType: "month" | "week" | "day"
   onViewChange: (type: "month" | "week" | "day") => void
   onDateChange: (date: Date) => void
-  onAddEvent: () => void
 }
 
 export default function CalendarHeader({
@@ -15,7 +14,6 @@ export default function CalendarHeader({
   viewType,
   onViewChange,
   onDateChange,
-  onAddEvent,
 }: CalendarHeaderProps) {
   const monthName = currentDate.toLocaleString("zh-CN", { month: "long", year: "numeric" })
 
@@ -60,15 +58,6 @@ export default function CalendarHeader({
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary mb-1 md:mb-2">📅 我的日历</h1>
           <p className="text-sm md:text-base text-muted-foreground">{monthName}</p>
         </div>
-
-        <button
-          onClick={onAddEvent}
-          className="flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-white px-3 md:px-4 py-2 md:py-3 rounded-full smooth-transition cartoon-shadow font-semibold w-full md:w-auto text-sm md:text-base"
-        >
-          <Plus size={18} className="md:w-5 md:h-5" />
-          <span className="hidden sm:inline">新增事件</span>
-          <span className="sm:hidden">新增</span>
-        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-4 md:mt-6">

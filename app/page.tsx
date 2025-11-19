@@ -139,13 +139,7 @@ export default function Home() {
           <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">
             {activeTab === "calendar" && (
               <div className="flex flex-col gap-4">
-                <CalendarHeader
-                  currentDate={currentDate}
-                  viewType={viewType}
-                  onViewChange={setViewType}
-                  onDateChange={setCurrentDate}
-                  onAddEvent={handleAddEvent}
-                />
+                <CalendarHeader currentDate={currentDate} viewType={viewType} onViewChange={setViewType} onDateChange={setCurrentDate} />
                 <CalendarView
                   currentDate={currentDate}
                   viewType={viewType}
