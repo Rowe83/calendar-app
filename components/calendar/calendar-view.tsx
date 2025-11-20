@@ -60,14 +60,23 @@ function getLunarLabel(date: Date) {
       if (lunarMonthFormatter) {
         const monthText = lunarMonthFormatter.format(date)
         if (monthText) {
-          return monthText
-            .replace("十一月", "冬月")
-            .replace("十二月", "腊月")
-            .replace(/^一月$/, "正月")
+          // 为月份下方加红色下划线样式，适配react/jsx
+          return (
+            <span style={{ borderBottom: '1px solid red', paddingBottom: '1px' }}>
+              {monthText
+                .replace("十一月", "冬月")
+                .replace("十二月", "腊月")
+                .replace(/^一月$/, "正月")}
+            </span>
+          )
         }
       }
       if (Number.isFinite(monthValue)) {
-        return LUNAR_MONTH_FALLBACK[(monthValue - 1) % LUNAR_MONTH_FALLBACK.length] ?? ""
+        return (
+          <span style={{ borderBottom: '1px solid red', paddingBottom: '1px' }}>
+            {LUNAR_MONTH_FALLBACK[(monthValue - 1) % LUNAR_MONTH_FALLBACK.length] ?? ""}
+          </span>
+        )
       }
       return "初一"
     }
@@ -77,6 +86,7 @@ function getLunarLabel(date: Date) {
     return ""
   }
 }
+
 
 interface Event {
   id: string
